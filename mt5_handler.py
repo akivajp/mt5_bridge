@@ -139,4 +139,110 @@ class MT5Handler:
             
         return result
 
-    # TODO: Implement send_order, modify_order, close_position
+    def send_order(self, symbol: str, order_type: str, volume: float, sl: float = 0.0, tp: float = 0.0, comment: str = "") -> Optional[int]:
+        """
+        Send a market order.
+        
+        Args:
+            symbol: Symbol to trade.
+            order_type: "BUY" or "SELL".
+            volume: Lot size.
+            sl: Stop Loss price.
+            tp: Take Profit price.
+            comment: Order comment.
+            
+        Returns:
+            Order ticket if successful, None otherwise.
+        """
+        if not self.connected:
+            if not self.initialize():
+                return None
+                
+        # Get current price for filling request
+        tick = self.get_tick(symbol)
+        if tick is None:
+            logger.error(f"Could not get tick for {symbol}")
+            return None
+            
+        action = mt5.TRADE_ACTION_DEAL
+        mt5_type = mt5.ORDER_TYPE_BUY if order_type == "BUY" else mt5.ORDER_TYPE_SELL
+        price = tick['ask'] if order_type == "BUY" else tick['bid']
+        
+        request = {
+            "action": action,
+            "symbol": symbol,
+            "volume": volume,
+            "type": mt5_type,
+            "price": price,
+            "sl": sl,
+            "tp": tp,
+            "deviation": 20, # Slippage tolerance
+            "magic": 123456, # Magic number
+            "comment": comment,
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,
+        }
+        
+        result = mt5.order_send(request)
+        
+        if result is None:
+            logger.error("Order send failed: result is None")
+            return None
+            
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            logger.error(f"Order send failed: {result.retcode} - {result.comment}")
+            return None
+            
+        logger.info(f"Order sent successfully: {result.order}")
+        return result.order
+
+    def close_position(self, ticket: int) -> bool:
+        """
+        Close an existing position.
+        """
+        if not self.connected:
+            if not self.initialize():
+                return False
+                
+        # Get position details to know volume and symbol
+        positions = mt5.positions_get(ticket=ticket)
+        if positions is None or len(positions) == 0:
+            logger.error(f"Position {ticket} not found")
+            return False
+            
+        pos = positions[0]
+        symbol = pos.symbol
+        volume = pos.volume
+        
+        # Determine opposite type
+        order_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+        
+        # Get current price
+        tick = self.get_tick(symbol)
+        if tick is None:
+            return False
+            
+        price = tick['bid'] if order_type == mt5.ORDER_TYPE_SELL else tick['ask']
+        
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": symbol,
+            "volume": volume,
+            "type": order_type,
+            "position": ticket,
+            "price": price,
+            "deviation": 20,
+            "magic": 123456,
+            "comment": "Close position",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,
+        }
+        
+        result = mt5.order_send(request)
+        
+        if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
+            logger.error(f"Close position failed: {result.comment if result else 'None'}")
+            return False
+            
+        logger.info(f"Position {ticket} closed successfully")
+        return True

@@ -82,6 +82,38 @@ def get_positions():
         raise HTTPException(status_code=500, detail="Failed to get positions")
     return positions
 
+class OrderRequest(BaseModel):
+    symbol: str
+    type: str # "BUY" or "SELL"
+    volume: float
+    sl: float = 0.0
+    tp: float = 0.0
+    comment: str = ""
+
+class CloseRequest(BaseModel):
+    ticket: int
+
+@app.post("/order")
+def send_order(order: OrderRequest):
+    ticket = mt5_handler.send_order(
+        order.symbol, 
+        order.type, 
+        order.volume, 
+        order.sl, 
+        order.tp, 
+        order.comment
+    )
+    if ticket is None:
+        raise HTTPException(status_code=500, detail="Failed to send order")
+    return {"status": "ok", "ticket": ticket}
+
+@app.post("/close")
+def close_position(req: CloseRequest):
+    success = mt5_handler.close_position(req.ticket)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to close position")
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     # Run the server
     # Host 0.0.0.0 allows access from other machines (e.g. Linux/WSL)

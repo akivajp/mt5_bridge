@@ -196,19 +196,20 @@ class MT5Handler:
         logger.info(f"Order sent successfully: {result.order}")
         return result.order
 
-    def close_position(self, ticket: int) -> bool:
+    def close_position(self, ticket: int) -> (bool, str):
         """
         Close an existing position.
+        Returns: (success, message)
         """
         if not self.connected:
             if not self.initialize():
-                return False
+                return False, "Failed to connect to MT5"
                 
         # Get position details to know volume and symbol
         positions = mt5.positions_get(ticket=ticket)
         if positions is None or len(positions) == 0:
             logger.error(f"Position {ticket} not found")
-            return False
+            return False, f"Position {ticket} not found"
             
         pos = positions[0]
         symbol = pos.symbol
@@ -220,7 +221,7 @@ class MT5Handler:
         # Get current price
         tick = self.get_tick(symbol)
         if tick is None:
-            return False
+            return False, f"Failed to get tick for {symbol}"
             
         price = tick['bid'] if order_type == mt5.ORDER_TYPE_SELL else tick['ask']
         
@@ -240,9 +241,14 @@ class MT5Handler:
         
         result = mt5.order_send(request)
         
-        if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
-            logger.error(f"Close position failed: {result.comment if result else 'None'}")
-            return False
+        if result is None:
+            logger.error("Close position failed: result is None")
+            return False, "Order send failed (result is None)"
+            
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            error_msg = f"{result.comment} ({result.retcode})"
+            logger.error(f"Close position failed: {error_msg}")
+            return False, error_msg
             
         logger.info(f"Position {ticket} closed successfully")
-        return True
+        return True, "Success"

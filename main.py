@@ -109,9 +109,9 @@ def send_order(order: OrderRequest):
 
 @app.post("/close")
 def close_position(req: CloseRequest):
-    success = mt5_handler.close_position(req.ticket)
+    success, message = mt5_handler.close_position(req.ticket)
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to close position")
+        raise HTTPException(status_code=500, detail=f"Failed to close position: {message}")
     return {"status": "ok"}
 
 if __name__ == "__main__":

@@ -36,6 +36,12 @@ python -m uvicorn mt5_bridge.main:app --host 0.0.0.0 --port 8000
 
 You can also start the server by calling `uvicorn.run` at the bottom of `main.py`.
 
+When invoking `main.py` directly, use the CLI flags to adjust host/port (defaults: `0.0.0.0:8000`).
+
+```powershell
+python mt5_bridge/main.py --host 0.0.0.0 --port 9000
+```
+
 ## API Reference
 All endpoints return JSON. On errors the service responds with HTTP 500 and a payload containing `detail`.
 

@@ -1,7 +1,10 @@
+#!/usr/bin/env python3
+
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
+import argparse
 import os
 import sys
 
@@ -135,6 +138,19 @@ def modify_position(req: ModifyRequest):
     return {"status": "ok"}
 
 if __name__ == "__main__":
-    # Run the server
-    # Host 0.0.0.0 allows access from other machines (e.g. Linux/WSL)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    parser = argparse.ArgumentParser(description="Run MT5 Bridge API server")
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host interface to bind (default: 0.0.0.0)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to listen on (default: 8000)",
+    )
+    args = parser.parse_args()
+
+    # Parse CLI args for server host/port / サーバーのホストとポートをCLI引数から取得
+    uvicorn.run(app, host=args.host, port=args.port)

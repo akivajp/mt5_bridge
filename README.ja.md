@@ -36,6 +36,12 @@ python -m uvicorn mt5_bridge.main:app --host 0.0.0.0 --port 8000
 
 `main.py`末尾の`uvicorn.run`を使って直接起動することも可能です。
 
+`main.py`を直接実行する場合は、CLI引数`--host`/`--port`でホストとポート（既定 `0.0.0.0:8000`）を変更できます。
+
+```powershell
+python mt5_bridge/main.py --host 0.0.0.0 --port 9000
+```
+
 ## APIリファレンス
 共通: 全エンドポイントはJSONを返し、エラー時はHTTP 500で`detail`を含むレスポンスを返します。
 

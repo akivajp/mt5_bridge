@@ -106,6 +106,14 @@ python mt5_bridge/main.py --host 0.0.0.0 --port 9000
 - エンドポイントを追加する際は`mt5_handler`に必ず薄いラッパーを用意し、FastAPI層から直接MetaTrader5 APIを呼び出さない方針にすると、将来的なサブモジュール化・単体利用が容易になります。
 - API仕様を変更した場合は、本READMEのエンドポイント定義を更新し、依存リポジトリにも周知してください。
 
+## MCP (Copilot CLI) 連携
+- 目的: FastAPIのHTTP APIをCopilot CLIのMCP経由でHTTP公開するサーバー。
+- 必要条件: `pip install -r requirements.txt`（`fastmcp`と`httpx`を含む）。
+- 環境変数: `MT5_BRIDGE_BASE_URL`（既定 `http://localhost:8000`）。
+- 起動（HTTP待受。既定ホスト `0.0.0.0`、ポート `8001`）:
+  - `python mcp_server.py --api-base http://localhost:8000 --host 0.0.0.0 --port 8001`
+- Copilot CLI: HTTPソースとして追加（例: `copilot mcp add http http://localhost:8001`）。利用可能ツールはHTTPエンドポイントと同名: `get_rates`, `get_tick`, `list_positions`, `send_order`, `close_position`, `modify_position`, `health`。
+
 ## サポート・寄付
 - <a href="https://github.com/sponsors/akivajp" style="vertical-align: middle;"><img src="https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png" alt="GitHub Sponsors" height="32" /></a> GitHub Sponsors: [https://github.com/sponsors/akivajp](https://github.com/sponsors/akivajp)
 - <a href="https://buymeacoffee.com/akivajp" style="vertical-align: middle;"><img src="https://github.githubassets.com/assets/buy_me_a_coffee-63ed78263f6e.svg" alt="Buy Me a Coffee" height="32" /></a>

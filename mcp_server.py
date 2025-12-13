@@ -105,6 +105,7 @@ if __name__ == "__main__":
     # Parse CLI args so operator can set API base URL and MCP listen address /
     # APIベースURLとMCP待受アドレスをCLI引数で設定
     parser = argparse.ArgumentParser(description="Run MT5 Bridge MCP over HTTP")
+    parser.add_argument("--http", action="store_true", help="Run MCP over HTTP (default: stdio)")
     parser.add_argument("--api-base", default=BASE_URL, help="MT5 Bridge API base URL (default: env MT5_BRIDGE_BASE_URL or http://localhost:8000)")
     parser.add_argument("--host", default="0.0.0.0", help="MCP listen host (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8001, help="MCP listen port (default: 8001)")
@@ -114,13 +115,7 @@ if __name__ == "__main__":
     #global BASE_URL
     BASE_URL = args.api_base
 
-    # Start MCP HTTP server; prefer run_http, otherwise use run(transport="http") /
-    # MCPのHTTPサーバーを起動。run_httpが無い場合はtransport="http"でrunを利用
-    if hasattr(mcp, "run_http"):
-        mcp.run_http(host=args.host, port=args.port)
-    elif hasattr(mcp, "run"):
-        # Some fastmcp versions default transport to stdio; force HTTP explicitly /
-        # 一部バージョンはデフォルトtransportがstdioのためHTTPを明示
+    if args.http:
         mcp.run(host=args.host, port=args.port, transport="http")
     else:
-        raise SystemExit("FastMCP does not provide run_http or run; please upgrade fastmcp")
+        mcp.run(transport="stdio")

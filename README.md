@@ -107,12 +107,14 @@ All endpoints return JSON. On errors the service responds with HTTP 500 and a pa
 - If you change the API surface, update this README and notify downstream consumers.
 
 ## MCP (Copilot CLI) Integration
-- Purpose: expose the HTTP API to Copilot CLI (MCP) over HTTP.
+- Purpose: expose the MT5 Bridge API to Copilot CLI (MCP). Default transport is stdio; use `--http` to run an HTTP listener.
 - Requirements: `pip install -r requirements.txt` (includes `fastmcp` and `httpx`).
 - Env: optional `MT5_BRIDGE_BASE_URL` (default `http://localhost:8000`).
-- Run MCP server (HTTP listener, defaults host `0.0.0.0`, port `8001`):
-  - `python mcp_server.py --api-base http://localhost:8000 --host 0.0.0.0 --port 8001`
-- Copilot CLI: add this MCP server as an HTTP source (e.g., `copilot mcp add http http://localhost:8001`). Tool names mirror the HTTP endpoints: `get_rates`, `get_tick`, `list_positions`, `send_order`, `close_position`, `modify_position`, `health`.
+- Run MCP server (stdio, default):
+  - `python mcp_server.py --api-base http://localhost:8000`
+- Run MCP server over HTTP (host `0.0.0.0`, port `8001` by default):
+  - `python mcp_server.py --http --api-base http://localhost:8000 --host 0.0.0.0 --port 8001`
+- Copilot CLI: add as stdio or HTTP source accordingly (e.g., `copilot mcp add http http://localhost:8001`). Tool names mirror the HTTP endpoints: `get_rates`, `get_tick`, `list_positions`, `send_order`, `close_position`, `modify_position`, `health`.
 
 ## Support and Donations
 - <a href="https://github.com/sponsors/akivajp" style="vertical-align: middle;"><img src="https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png" alt="GitHub Sponsors" height="32" /></a> GitHub Sponsors: [https://github.com/sponsors/akivajp](https://github.com/sponsors/akivajp)

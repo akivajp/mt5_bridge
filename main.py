@@ -105,7 +105,7 @@ class ModifyRequest(BaseModel):
 
 @app.post("/order")
 def send_order(order: OrderRequest):
-    ticket = mt5_handler.send_order(
+    ticket, error = mt5_handler.send_order(
         order.symbol, 
         order.type, 
         order.volume, 
@@ -114,7 +114,8 @@ def send_order(order: OrderRequest):
         order.comment
     )
     if ticket is None:
-        raise HTTPException(status_code=500, detail="Failed to send order")
+        detail = error or "Failed to send order"
+        raise HTTPException(status_code=500, detail=detail)
     return {"status": "ok", "ticket": ticket}
 
 @app.post("/close")

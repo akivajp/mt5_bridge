@@ -141,7 +141,15 @@ class MT5Handler:
             
         return result
 
-    def send_order(self, symbol: str, order_type: str, volume: float, sl: float = 0.0, tp: float = 0.0, comment: str = "") -> Optional[int]:
+    def send_order(
+        self,
+        symbol: str,
+        order_type: str,
+        volume: float,
+        sl: float = 0.0,
+        tp: float = 0.0,
+        comment: str = "",
+    ) -> tuple[Optional[int], Optional[str]]:
         """
         Send a market order.
         
@@ -158,13 +166,15 @@ class MT5Handler:
         """
         if not self.connected:
             if not self.initialize():
-                return None
+                message = "MT5 に接続できませんでした"
+                return None, message
                 
         # Get current price for filling request
         tick = self.get_tick(symbol)
         if tick is None:
-            logger.error(f"Could not get tick for {symbol}")
-            return None
+            message = f"{symbol} のティック情報を取得できません"
+            logger.error(message)
+            return None, message
             
         action = mt5.TRADE_ACTION_DEAL
         mt5_type = mt5.ORDER_TYPE_BUY if order_type == "BUY" else mt5.ORDER_TYPE_SELL
@@ -188,15 +198,17 @@ class MT5Handler:
         result = mt5.order_send(request)
         
         if result is None:
-            logger.error("Order send failed: result is None")
-            return None
-            
+            message = "order_send の戻り値が None でした"
+            logger.error(message)
+            return None, message
+
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            logger.error(f"Order send failed: {result.retcode} - {result.comment}")
-            return None
+            message = f"{result.retcode} で失敗: {result.comment}"
+            logger.error(f"Order send failed: {message}")
+            return None, message
             
         logger.info(f"Order sent successfully: {result.order}")
-        return result.order
+        return result.order, None
 
     def close_position(self, ticket: int) -> (bool, str):
         """

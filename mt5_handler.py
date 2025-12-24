@@ -243,7 +243,7 @@ class MT5Handler:
             
         price = tick['bid'] if order_type == mt5.ORDER_TYPE_SELL else tick['ask']
         
-        request = {
+        base_request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
             "volume": volume,
@@ -254,22 +254,33 @@ class MT5Handler:
             "magic": 123456,
             "comment": "Close position",
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
         }
-        
-        result = mt5.order_send(request)
-        
-        if result is None:
-            logger.error("Close position failed: result is None")
-            return False, "Order send failed (result is None)"
-            
-        if result.retcode != mt5.TRADE_RETCODE_DONE:
-            error_msg = f"{result.comment} ({result.retcode})"
-            logger.error(f"Close position failed: {error_msg}")
-            return False, error_msg
-            
-        logger.info(f"Position {ticket} closed successfully")
-        return True, "Success"
+
+        fillings = [
+            None,
+            mt5.ORDER_FILLING_IOC,
+            mt5.ORDER_FILLING_FOK,
+            mt5.ORDER_FILLING_RETURN,
+        ]
+        last_error: Optional[str] = None
+        for filling in fillings:
+            request = dict(base_request)
+            if filling is not None:
+                request["type_filling"] = filling
+            filling_label = "default" if filling is None else str(filling)
+            result = mt5.order_send(request)
+            if result is None:
+                last_error = f"order_send returned None with filling={filling_label}"
+                logger.error(last_error)
+                continue
+            if result.retcode == mt5.TRADE_RETCODE_DONE:
+                logger.info("Position %s closed successfully (filling=%s)", ticket, filling_label)
+                return True, "Success"
+            last_error = f"filling={filling_label} {result.retcode} で失敗: {result.comment}"
+            logger.warning("Close position failed: %s", last_error)
+
+        message = last_error or "Close position failed"
+        return False, message
 
     def modify_position(self, ticket: int, sl: Optional[float], tp: Optional[float], update_sl: bool, update_tp: bool) -> (bool, str):
         """Adjust stop loss / take profit for an existing position."""

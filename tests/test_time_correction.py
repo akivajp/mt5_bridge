@@ -56,3 +56,37 @@ def test_missing_offset_is_treated_as_zero() -> None:
     """オフセット未計算 (None) の場合は補正量 0 として扱うこと。"""
     handler = _handler(offset_sec=None)
     assert handler._apply_time_correction_msc(1_704_078_000_123) == 1_704_078_000_123
+
+
+# --- サーバーオフセット推定の妥当性検証 ---------------------------------------
+
+
+def test_plausible_offset_accepted_on_first_estimation() -> None:
+    """初回推定でも現実的な範囲のオフセットは受理されること。"""
+    handler = _handler(offset_sec=None)
+    assert handler._is_plausible_offset(OFFSET_GMT3_SEC) is True
+    assert handler._is_plausible_offset(-5 * 3600) is True
+
+
+def test_out_of_range_offset_rejected() -> None:
+    """実在しないタイムゾーン範囲のオフセットは棄却されること。"""
+    handler = _handler(offset_sec=None)
+    # 市場クローズ中に長時間経過すると、この種の非現実的な値が算出される
+    assert handler._is_plausible_offset(-24 * 3600) is False
+    assert handler._is_plausible_offset(20 * 3600) is False
+
+
+def test_large_drift_from_known_offset_rejected() -> None:
+    """確定済みオフセットから1時間を超えて乖離した推定値は棄却されること。"""
+    handler = _handler()
+    # 週末クローズ中に算出されがちな「-12時間」ケース (範囲内だが乖離が大きい)
+    assert handler._is_plausible_offset(-12 * 3600) is False
+    # 停止から2時間経過した時点での誤推定
+    assert handler._is_plausible_offset(OFFSET_GMT3_SEC - 2 * 3600) is False
+
+
+def test_dst_shift_within_one_hour_accepted() -> None:
+    """夏時間切り替え相当 (±1時間) の変動は受理されること。"""
+    handler = _handler()
+    assert handler._is_plausible_offset(OFFSET_GMT3_SEC - 3600) is True
+    assert handler._is_plausible_offset(OFFSET_GMT3_SEC + 3600) is True

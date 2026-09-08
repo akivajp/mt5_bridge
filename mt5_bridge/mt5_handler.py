@@ -23,6 +23,14 @@ from typing import Optional, Dict, List, Union
 
 
 class MT5Handler:
+    # サーバータイムゾーンオフセットとして現実的に取りうる範囲 (秒)。
+    # 実在するブローカーのサーバー時間は概ね UTC-12 ～ UTC+14 に収まる。
+    _MIN_OFFSET_SEC = -12 * 3600
+    _MAX_OFFSET_SEC = 14 * 3600
+    # 再推定時に許容するオフセットの変動幅 (秒)。
+    # サーバーのタイムゾーンが変わるのは夏時間切り替え時のみで、その幅は最大1時間。
+    _MAX_OFFSET_DRIFT_SEC = 3600
+
     def __init__(
         self,
         program_path: Optional[str] = None,
@@ -101,6 +109,30 @@ class MT5Handler:
         self.connected = False
         logger.info("MT5 connection shutdown")
 
+    def _is_plausible_offset(self, offset_sec: int) -> bool:
+        """
+        推定されたサーバータイムゾーンオフセットが妥当かどうかを判定する。
+
+        市場クローズ中は symbol_info_tick() が直前の営業終了時のティックを返し続けるため、
+        オフセットが「真の値 - 市場停止からの経過時間」として大幅に誤推定される。
+        以下の2条件で明らかに不正な推定値を弾く。
+
+        1. 実在するタイムゾーンの範囲 (UTC-12 ～ UTC+14) に収まっていること
+        2. 既にオフセットが確定している場合、その変動幅が1時間以内であること
+
+        Args:
+            offset_sec: 推定されたオフセット (秒)
+
+        Returns:
+            妥当と判断できる場合 True
+        """
+        if not (self._MIN_OFFSET_SEC <= offset_sec <= self._MAX_OFFSET_SEC):
+            return False
+        if self._server_offset_sec is not None:
+            if abs(offset_sec - self._server_offset_sec) > self._MAX_OFFSET_DRIFT_SEC:
+                return False
+        return True
+
     def _update_server_offset(self, symbol: str):
         """
         Estimate server timezone offset relative to UTC using the given symbol's tick time.
@@ -136,8 +168,27 @@ class MT5Handler:
         
         diff = server_ts - utc_ts
         # Round to nearest 15 minutes (900s) to handle latency and candle close lag
-        rounded_diff = round(diff / 900) * 900
-        self._server_offset_sec = int(rounded_diff)
+        rounded_diff = int(round(diff / 900) * 900)
+
+        # 市場クローズ中の誤推定を採用しないよう妥当性を検証する。
+        # 棄却時は _offset_updated_at を更新しないため、次回呼び出しで再試行され、
+        # 市場再開後は速やかに正しいオフセットへ復帰する。
+        if not self._is_plausible_offset(rounded_diff):
+            if self._server_offset_sec is None:
+                logger.error(
+                    f"Implausible server timezone offset {rounded_diff}s discarded "
+                    f"(using {symbol}, raw_diff={diff:.1f}s); market may be closed. "
+                    f"Time correction is disabled until a valid offset is obtained."
+                )
+            else:
+                logger.warning(
+                    f"Implausible server timezone offset {rounded_diff}s discarded "
+                    f"(using {symbol}, raw_diff={diff:.1f}s); "
+                    f"keeping previous offset {self._server_offset_sec}s."
+                )
+            return
+
+        self._server_offset_sec = rounded_diff
         self._offset_updated_at = datetime.now(timezone.utc)
         logger.info(f"Server timezone offset estimated: {self._server_offset_sec}s (using {symbol}, raw_diff={diff:.1f}s)")
 

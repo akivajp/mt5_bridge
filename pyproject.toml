@@ -1,6 +1,6 @@
 [project]
 name = "mt5-bridge"
-version = "1.8.4"
+version = "1.9.0"
 description = "MT5 Bridge API - REST API and CLI for MetaTrader5"
 readme = "README.md"
 requires-python = ">=3.11"

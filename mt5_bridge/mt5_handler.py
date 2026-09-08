@@ -149,6 +149,27 @@ class MT5Handler:
         # We rely on _update_server_offset being called before or during.
         return int(ts - (self._server_offset_sec or 0))
 
+    def _apply_time_correction_msc(self, ts_msc: int) -> int:
+        """
+        ミリ秒精度のサーバータイムスタンプをUTCへ変換する。
+
+        MT5が返す time_msc は time と同じくサーバー時間基準であるため、
+        秒精度側と同一のオフセットをミリ秒スケールで適用しないと、
+        time と time_msc の間にサーバーのタイムゾーン分のズレが生じてしまう。
+
+        Args:
+            ts_msc: サーバー時間基準のミリ秒タイムスタンプ
+
+        Returns:
+            UTC基準のミリ秒タイムスタンプ。use_utc=False の場合は入力をそのまま返す。
+        """
+        if not self.use_utc:
+            return ts_msc
+        # time_msc が未設定(0)のレコードは補正すると負値になるため対象外とする
+        if ts_msc == 0:
+            return 0
+        return int(ts_msc - (self._server_offset_sec or 0) * 1000)
+
     def get_rates(self, symbol: str, timeframe_str: str, num_bars: int) -> Optional[List[Dict]]:
         """
         Get historical rates for a symbol.
@@ -293,7 +314,7 @@ class MT5Handler:
 
         return {
             "time": self._apply_time_correction(int(tick.time)),
-            "time_msc": int(tick.time_msc),
+            "time_msc": self._apply_time_correction_msc(int(tick.time_msc)),
             "bid": float(tick.bid),
             "ask": float(tick.ask),
             "last": float(tick.last),
@@ -356,7 +377,7 @@ class MT5Handler:
         for tick in ticks:
             result.append({
                 "time": self._apply_time_correction(int(tick['time'])),
-                "time_msc": int(tick['time_msc']),  # ミリ秒精度のタイムスタンプ
+                "time_msc": self._apply_time_correction_msc(int(tick['time_msc'])),  # ミリ秒精度のタイムスタンプ (UTC)
                 "bid": float(tick['bid']),
                 "ask": float(tick['ask']),
                 "last": float(tick['last']),
@@ -420,7 +441,7 @@ class MT5Handler:
         for tick in ticks:
             result.append({
                 "time": self._apply_time_correction(int(tick['time'])),
-                "time_msc": int(tick['time_msc']),  # ミリ秒精度のタイムスタンプ
+                "time_msc": self._apply_time_correction_msc(int(tick['time_msc'])),  # ミリ秒精度のタイムスタンプ (UTC)
                 "bid": float(tick['bid']),
                 "ask": float(tick['ask']),
                 "last": float(tick['last']),
@@ -504,7 +525,7 @@ class MT5Handler:
                 "price_current": float(pos.price_current),
                 "profit": float(pos.profit),
                 "time": self._apply_time_correction(int(pos.time)),
-                "time_msc": int(getattr(pos, "time_msc", 0))
+                "time_msc": self._apply_time_correction_msc(int(getattr(pos, "time_msc", 0)))
             })
             
         return result
@@ -559,7 +580,7 @@ class MT5Handler:
                 "ticket": int(deal.ticket),
                 "order": int(deal.order),
                 "time": self._apply_time_correction(int(deal.time)),
-                "time_msc": int(deal.time_msc),
+                "time_msc": self._apply_time_correction_msc(int(deal.time_msc)),
                 "type": "BUY" if deal.type == 0 else "SELL" if deal.type == 1 else str(deal.type),
                 "entry": "IN" if deal.entry == 0 else "OUT" if deal.entry == 1 else "INOUT" if deal.entry == 2 else str(deal.entry),
                 "position_id": int(deal.position_id),

@@ -136,7 +136,7 @@ The tick data endpoints support the following tick type flags:
 
 The response includes:
 - `time`: Timestamp in seconds (UTC)
-- `time_msc`: Millisecond-precision timestamp
+- `time_msc`: Millisecond-precision timestamp (UTC)
 - `bid`, `ask`, `last`, `volume`: Price and volume information
 - `flags`: Tick change flags
 

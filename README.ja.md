@@ -128,7 +128,7 @@ uv run mt5-bridge client --url http://192.168.1.10:8000 modify 12345678 --sl 200
 
 レスポンスには以下のフィールドが含まれます:
 - `time`: 秒単位のタイムスタンプ (UTC)
-- `time_msc`: ミリ秒単位のタイムスタンプ（高精度）
+- `time_msc`: ミリ秒単位のタイムスタンプ（高精度、UTC）
 - `bid`, `ask`, `last`, `volume`: 価格・出来高情報
 - `flags`: ティック変更フラグ
 

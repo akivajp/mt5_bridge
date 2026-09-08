@@ -62,7 +62,7 @@ class Tick(BaseModel):
 class HistoricalTick(BaseModel):
     """過去ティックデータのモデル（ミリ秒精度対応）"""
     time: int              # 秒単位のタイムスタンプ (UTC)
-    time_msc: int          # ミリ秒単位のタイムスタンプ
+    time_msc: int          # ミリ秒単位のタイムスタンプ (UTC)
     bid: float
     ask: float
     last: float
